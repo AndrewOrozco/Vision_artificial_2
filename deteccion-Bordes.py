@@ -2,6 +2,7 @@ import cv2
 import os
 import numpy as np
 import random
+import shutil
 
 # Funciones de detección de bordes
 def roberts_cross(image):
@@ -32,9 +33,11 @@ def canny(image):
 
 # Ruta de las carpetas
 base_path = 'images/base/BoneFractureDataset/testing/fractured'
+originals_path = 'images/Imagenes_originales'
 save_path = 'images/deteccion-bordes'
 
 # Crear carpetas si no existen
+os.makedirs(originals_path, exist_ok=True)
 os.makedirs(os.path.join(save_path, 'Roberts'), exist_ok=True)
 os.makedirs(os.path.join(save_path, 'Prewitt'), exist_ok=True)
 os.makedirs(os.path.join(save_path, 'Sobel'), exist_ok=True)
@@ -44,16 +47,28 @@ os.makedirs(os.path.join(save_path, 'Canny'), exist_ok=True)
 all_files = [f for f in os.listdir(base_path) if f.endswith('.jpg') or f.endswith('.png')]
 random.shuffle(all_files)
 
-# Contador de imágenes procesadas
-count = 0
-max_images = 10
+# Verificar cuántas imágenes ya hay en la carpeta de originales
+existing_files = os.listdir(originals_path)
+num_existing_files = len(existing_files)
+num_needed_files = 10 - num_existing_files
 
-# Procesar cada imagen en la carpeta base de forma aleatoria
-for filename in all_files:
-    if count >= max_images:
-        break
-    img_path = os.path.join(base_path, filename)
+# Seleccionar aleatoriamente las imágenes faltantes y copiarlas a la carpeta de originales
+if num_needed_files > 0:
+    selected_files = all_files[:num_needed_files]
+    for filename in selected_files:
+        original_file_path = os.path.join(base_path, filename)
+        shutil.copy(original_file_path, os.path.join(originals_path, filename))
+    existing_files.extend(selected_files)
+
+# Procesar cada imagen en la carpeta de originales
+for filename in existing_files:
+    img_path = os.path.join(originals_path, filename)
     img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+
+    # Verificar si la imagen se cargó correctamente
+    if img is None:
+        print(f'Error al cargar la imagen: {filename}')
+        continue
 
     # Aplicar algoritmos
     edges_roberts = roberts_cross(img)
@@ -67,6 +82,9 @@ for filename in all_files:
     cv2.imwrite(os.path.join(save_path, 'Sobel', f'sobel_{filename}'), edges_sobel)
     cv2.imwrite(os.path.join(save_path, 'Canny', f'canny_{filename}'), edges_canny)
 
-    # Incrementar el contador
-    count += 1
+# Verificar las imágenes copiadas
+copied_files = os.listdir(originals_path)
+print(f'Imágenes copiadas: {copied_files}')
+
+
 
